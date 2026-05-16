@@ -13,6 +13,8 @@ export interface RunOptions {
     driver: BrowserDriver;
     maxSteps?: number;
     onEvent?: (event: AgentEvent) => void;
+    generateReport?: boolean;
+    generateConclusion?: boolean;
 }
 
 export interface SurfexResult {
@@ -46,7 +48,14 @@ export class Surfex {
     }
 
     async run(options: RunOptions): Promise<SurfexResult> {
-        const { goal, driver, maxSteps = 60, onEvent = () => {} } = options;
+        const { 
+            goal, 
+            driver, 
+            maxSteps = 60, 
+            onEvent = () => {},
+            generateReport = true,
+            generateConclusion = true
+        } = options;
         const { model } = this.options;
 
         this.abortController?.abort();
@@ -62,7 +71,7 @@ export class Surfex {
             lastReadPageUrl: null,
             lastReadCapture: null,
             reportSegments: [],
-            isResearchGoal: /research|analysiss|summary|report|plan|find out/i.test(goal),
+            isResearchGoal: generateReport && /research|analysiss|summary|report|plan|find out/i.test(goal),
         };
         const maxPlannerRounds = maxSteps * 4 + 12;
 
@@ -70,7 +79,7 @@ export class Surfex {
             while (state.executedSteps < maxSteps && state.plannerRounds < maxPlannerRounds) {
                 if (signal.aborted) {
                     onEvent({ type: "finished", reason: "stopped" });
-                    return this.finalizeRun(goal, "stopped - user aborted", state, signal);
+                    return this.finalizeRun(goal, "stopped - user aborted", state, signal, generateConclusion, generateReport);
                 }
 
                 state.plannerRounds += 1;
@@ -101,7 +110,7 @@ export class Surfex {
                         }
                     } catch (e) {
                         onEvent({ type: "error", message: `screenshot_failed: ${String(e)}` });
-                        return this.finalizeRun(goal, `error: screenshot failed`, state, signal, false);
+                        return this.finalizeRun(goal, `error: screenshot failed`, state, signal, generateConclusion, generateReport, false);
                     }
                 }
 
@@ -164,7 +173,7 @@ export class Surfex {
                     action = await parseOrRepairAgentStep(text, model, signal, onEvent);
                 } catch (e) {
                     onEvent({ type: "error", message: `llm_error: ${String(e)}` });
-                    return this.finalizeRun(goal, `error: llm failed`, state, signal, false);
+                    return this.finalizeRun(goal, `error: llm failed`, state, signal, generateConclusion, generateReport, false);
                 }
 
                 if (action.action === "see") {
@@ -175,7 +184,7 @@ export class Surfex {
 
                 if (action.action === "done") {
                     onEvent({ type: "finished", reason: action.summary });
-                    return this.finalizeRun(goal, action.summary, state, signal, true);
+                    return this.finalizeRun(goal, action.summary, state, signal, generateConclusion, generateReport, true);
                 }
 
                 onEvent({ type: "step", step: state.executedSteps + 1, action });
@@ -216,7 +225,7 @@ export class Surfex {
                     }
                 } catch (execErr) {
                     onEvent({ type: "error", message: `execute_step_failed: ${String(execErr)}` });
-                    return this.finalizeRun(goal, `error: execution failed`, state, signal, false);
+                    return this.finalizeRun(goal, `error: execution failed`, state, signal, generateConclusion, generateReport, false);
                 }
 
                 state.historyLines.push(JSON.stringify(action));
@@ -228,7 +237,7 @@ export class Surfex {
 
             const reason = state.executedSteps >= maxSteps ? "max_steps" : "max_planner_rounds";
             onEvent({ type: "finished", reason });
-            return this.finalizeRun(goal, reason, state, signal, false);
+            return this.finalizeRun(goal, reason, state, signal, generateConclusion, generateReport, false);
             
         } finally {
             if (myRunId === this.currentRunId) {
@@ -242,6 +251,8 @@ export class Surfex {
         summary: string,
         state: AgentRunState,
         signal: AbortSignal,
+        generateConclusion: boolean,
+        generateReport: boolean,
         success = true
     ): Promise<SurfexResult> {
         // If there's an error and no history, return basic
@@ -250,22 +261,28 @@ export class Surfex {
         }
 
         // 1. Write the conclusion
-        const conclusion = await writeUserConclusion({
-            goal,
-            historyLines: state.historyLines,
-            agentDoneSummary: summary,
-            model: this.options.model,
-            signal,
-        });
+        let conclusion = summary;
+        if (generateConclusion) {
+            conclusion = await writeUserConclusion({
+                goal,
+                historyLines: state.historyLines,
+                agentDoneSummary: summary,
+                model: this.options.model,
+                signal,
+            });
+        }
 
         // 2. Generate the Markdown report
-        const report = await generateResearchReportMarkdown({
-            goal,
-            segments: state.reportSegments,
-            historyLines: state.historyLines,
-            model: this.options.model,
-            signal,
-        });
+        let report = null;
+        if (generateReport) {
+            report = await generateResearchReportMarkdown({
+                goal,
+                segments: state.reportSegments,
+                historyLines: state.historyLines,
+                model: this.options.model,
+                signal,
+            });
+        }
 
         return {
             success,
