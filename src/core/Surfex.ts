@@ -218,6 +218,7 @@ export class Surfex {
                             if (state.lastReadCapture) {
                                 state.reportSegments.push({ ...state.lastReadCapture });
                                 onEvent({ type: "log", message: `[agent] Saved segment for report: ${state.lastReadCapture.url}` });
+                                state.lastReadCapture = null; // Clear it so it doesn't stay in state forever
                             } else {
                                 onEvent({ type: "log", message: `[agent] Tried to save_report but read_page was not called recently.` });
                             }

@@ -23,13 +23,7 @@ export class PlaywrightDriver implements BrowserDriver {
     }
 
     async evaluate<T>(script: string): Promise<T> {
-        // We wrap the script so that developers can pass raw string functions or expressions
-        // For security in a real browser it might need strictness, but for playwright evaluate it works
-        return await this.page.evaluate<T>(`
-            (() => {
-                ${script}
-            })()
-        `);
+        return await this.page.evaluate<T>(script);
     }
 
     async waitForTimeout(ms: number): Promise<void> {
