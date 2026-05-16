@@ -1,0 +1,33 @@
+{
+  "name": "@surfex-ai/sdk",
+  "version": "0.1.0",
+  "description": "Agentic browser automation library with vision and self-healing",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "browser",
+    "agent",
+    "llm",
+    "automation",
+    "playwright"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  }
+}
