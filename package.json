@@ -35,6 +35,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@ai-sdk/anthropic": "^2.0.17",
+    "@ai-sdk/openai": "^2.0.30",
     "@types/node": "^20.0.0",
     "dotenv": "^17.4.2",
     "playwright": "^1.60.0",
@@ -43,8 +45,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.17",
-    "@ai-sdk/openai": "^2.0.30",
     "ai": "^5.0.44",
     "zod": "^3.23.0"
   }
