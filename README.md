@@ -1,123 +1,234 @@
 <div align="center">
-  <h1>🏄‍♂️ Surfex AI SDK</h1>
-  <p><strong>A production-ready, agentic browser automation library built on top of the Vercel AI SDK.</strong></p>
 
-  <a href="https://www.npmjs.com/package/@surfex-ai/sdk"><img src="https://img.shields.io/npm/v/@surfex-ai/sdk?style=flat-square&color=0070f3" alt="NPM Version" /></a>
-  <a href="https://github.com/surfex-ai/sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License" /></a>
-  <img src="https://img.shields.io/badge/TypeScript-Ready-blue?style=flat-square&logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Powered%20by-Vercel%20AI%20SDK-black?style=flat-square&logo=vercel" alt="Vercel AI SDK" />
+# 🏄 Surfex AI SDK
+
+**Agentic browser automation — vision-first, self-healing, research-ready.**
+
+[![npm](https://img.shields.io/npm/v/@surfex-ai/sdk?style=flat-square&color=0070f3)](https://www.npmjs.com/package/@surfex-ai/sdk)
+[![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-ready-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vercel AI SDK](https://img.shields.io/badge/Powered%20by-Vercel%20AI%20SDK-black?style=flat-square&logo=vercel)](https://sdk.vercel.ai/)
+
+Give Surfex a **goal** and a **model**. It navigates, clicks, reads, and reports — all on its own.
+
 </div>
-
-<br />
-
-Give **Surfex** a goal and an LLM model, and it will autonomously navigate, read, click, scroll, and interact with the web to achieve it. Whether you are building an automated research assistant, a self-healing E2E testing pipeline, or a dynamic data scraper, Surfex provides the reliable agentic loop you need.
 
 ---
 
-## ✨ Why Surfex?
 
-- 🧠 **Bring Your Own Model (BYOM):** Fully compatible with any provider supported by the Vercel AI SDK (`@ai-sdk/anthropic`, `@ai-sdk/openai`, etc.). You control the API keys and the costs.
-- 👁️ **Native Vision Support:** Surfex automatically takes screenshots and passes them to vision-capable models (like Claude 3.5 Sonnet or GPT-4o) for flawless coordinate clicking and visual context.
-- 🩹 **Self-Healing Execution:** Built-in JSON repair and retry logic prevents agent crashes from hallucinated or malformed LLM outputs.
-- 📊 **Automated Reporting:** Includes an internal secondary LLM loop that automatically synthesizes raw web data into beautiful, properly cited Markdown research reports.
-- 🔌 **Agnostic Driver Architecture:** Surfex does not lock you into a single browser. The abstract `BrowserDriver` interface allows you to run Surfex inside Playwright, Electron, Puppeteer, or any custom environment.
+| | Feature | What it means |
+|---|---|---|
+| 🧠 | **Bring Your Own Model** | Works with Claude, GPT-4o, Gemini — any Vercel AI SDK provider. You own the keys and costs. |
+| 👁️ | **Native Vision** | Auto-screenshots fed to vision models. Clicks target what's *visible*, not fragile CSS selectors. |
+| 🩹 | **Self-Healing** | Built-in JSON repair + retry logic. Malformed LLM output triggers a coercion pass, not a crash. |
+| 📊 | **Auto Reports** | A secondary LLM loop compiles saved page content into a structured, cited Markdown document. |
+| 🔌 | **Driver-Agnostic** | Playwright included. Plug in Puppeteer, Electron, or any custom browser via `BrowserDriver`. |
 
 ---
 
 ## 📦 Installation
 
-To use Surfex, you need to install the SDK along with your preferred browser driver (`playwright` is supported out-of-the-box) and your preferred LLM provider.
-
 ```bash
-# 1. Install Surfex and Playwright
+# 1. Install Surfex + browser driver
 npm install @surfex-ai/sdk playwright
 
-# 2. Install the Vercel AI SDK and your LLM provider of choice
-npm install ai @ai-sdk/anthropic 
+# 2. Add the Vercel AI SDK + your LLM provider
+npm install ai @ai-sdk/anthropic
 ```
-
-*(Note: Playwright is installed directly by you so that Surfex doesn't lock you into a specific browser version.)*
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quickstart
 
-Here is the absolute simplest way to use Surfex:
+```typescript
+import { chromium } from 'playwright';
+import { Surfex } from '@surfex-ai/sdk';
+import { PlaywrightDriver } from '@surfex-ai/sdk/playwright';
+import { anthropic } from '@ai-sdk/anthropic';
+
+const browser = await chromium.launch({ headless: false });
+const page = await browser.newPage();
+
+const agent = new Surfex({ model: anthropic('claude-3-5-sonnet-20241022') });
+
+const result = await agent.run({
+  goal: "Play a 1-hour Lo-fi playlist on YouTube.",
+  driver: new PlaywrightDriver(page)
+});
+
+console.log(result.conclusion);
+await browser.close();
+```
+
+> No selectors. No XPaths. No element IDs. Just a goal.
+
+---
+
+## 🎯 Use Cases
+
+### 🧪 Really cool E2E tests
+Vision-based clicks survive DOM changes and redesigns. 
 
 ```typescript
 const result = await agent.run({
-    goal: "Play an 1 hour long Lo-fi playlist on youtube.",
-    driver: new PlaywrightDriver(page)
+  goal: "Go to github.com, search 'playwright', click the first repo result.",
+  driver: new PlaywrightDriver(page),
+  generateReport: false,     // skip for speed
+  generateConclusion: false  // skip for raw testing
 });
 
+console.log("Passed:", result.success);
 ```
 
-### 📚 Full Examples
+---
 
-Want to see complete, runnable code? Check out the [`examples/`](./examples) directory in this repository:
+### 🕵️ Autonomous planning/research/analysis
+Browses multiple sources, extracts content, and produces a Markdown brief — automatically.
 
-- 🧪 [**`examples/e2e-testing.ts`**](./examples/e2e-testing.ts): Learn how to disable the reporting pipeline for lightning-fast UI testing and element clicking.
-- 🕵️ [**`examples/research-agent.ts`**](./examples/research-agent.ts): Learn how to turn Surfex into a full-blown autonomous researcher that reads web pages and outputs beautiful Markdown reports.
+```typescript
+const result = await agent.run({
+  goal: "Research the top 3 AI startups of 2025 from 3 different sites.",
+  driver: new PlaywrightDriver(page),
+  generateReport: true,
+  generateConclusion: true
+});
+
+if (result.report) fs.writeFileSync('report.md', result.report, 'utf-8');
+```
 
 ---
 
-## 🎯 Primary Use Cases
-
-1. **Autonomous Research Agents:** Give Surfex a broad goal ("Find the top 3 AI startups and summarize their pricing"). The agent will navigate the web, use the `save_report` action on relevant pages, and output a beautifully formatted Markdown brief.
-2. **Self-Healing E2E Tests:** Traditional CSS selectors break easily. Surfex uses vision to click on elements ("Click the checkout button"), meaning your UI tests survive DOM changes and redesigns.
-3. **Data Extraction Pipelines:** Scrape dynamic, React/SPA heavy websites by having an agent actively scroll, wait for network requests, and extract data exactly as a human would.
+### 🗂️ Dynamic data extraction
+Scrapes React/SPA-heavy pages by scrolling, waiting, and extracting exactly as a human would — no static HTML required.
 
 ---
 
-## ⚙️ Configuration & API Reference
+## ⚙️ API Reference
 
-### `new Surfex(options: SurfexOptions)`
-Creates a new instance of the Surfex orchestrator.
-- `model` (LanguageModel): The Vercel AI SDK model instance you want the agent to use for its internal loop.
+### `new Surfex(options)`
 
-### `agent.run(options: RunOptions): Promise<SurfexResult>`
-Executes the autonomous loop until the goal is achieved, max steps are reached, or an error occurs.
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | `LanguageModel` | Any Vercel AI SDK model instance |
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `goal` | `string` | **Required** | The natural language prompt instructing the agent what to achieve. |
-| `driver` | `BrowserDriver` | **Required** | The adapter controlling the browser (e.g., `new PlaywrightDriver(page)`). |
-| `maxSteps` | `number` | `60` | The absolute maximum number of actions the agent can take before aborting. |
-| `generateReport` | `boolean` | `true` | If true, triggers a secondary LLM call to compile saved page segments into a Markdown document. |
-| `generateConclusion` | `boolean` | `true` | If true, triggers a secondary LLM call to write a friendly summary of the execution. |
-| `onEvent` | `function` | `() => {}` | Callback fired on agent events (`log`, `step`, `error`, `finished`). |
+---
+
+### `agent.run(options)` → `Promise<SurfexResult>`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `goal` | `string` | **required** | Plain-English instruction for the agent |
+| `driver` | `BrowserDriver` | **required** | Browser adapter — e.g. `new PlaywrightDriver(page)` |
+| `maxSteps` | `number` | `60` | Max actions before the agent aborts |
+| `generateReport` | `boolean` | `true` | Compile saved pages into a Markdown report |
+| `generateConclusion` | `boolean` | `true` | Write a human-friendly run summary |
+| `onEvent` | `function` | `() => {}` | Callback for `log` · `step` · `error` · `finished` events |
+
+---
 
 ### `SurfexResult`
-The rich object returned when the run finishes:
-- `success` (`boolean`): Whether the agent successfully achieved the goal or aborted.
-- `summary` (`string`): The raw technical summary of the final action.
-- `conclusion` (`string`): A friendly, human-readable summary written by the LLM.
-- `report` (`string | null`): The generated Markdown document containing all findings (populated if `generateReport` was true and the agent saved segments).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `boolean` | Whether the agent completed its goal |
+| `summary` | `string` | Raw technical summary of the final action |
+| `conclusion` | `string` | Human-friendly LLM-written summary |
+| `report` | `string \| null` | Generated Markdown document (populated if pages were saved) |
 
 ---
 
-## 🛠️ Bring Your Own Driver (Advanced)
+### Listening to events
 
-Surfex is completely decoupled from Playwright. If you are building an Electron app, a Puppeteer scraper, or a custom Chromium fork, you can easily implement your own driver by satisfying the `BrowserDriver` interface:
+```typescript
+await agent.run({
+  goal: "...",
+  driver: new PlaywrightDriver(page),
+  onEvent: (event) => {
+    if (event.type === "step")  console.log(`Step ${event.step}:`, event.action);
+    if (event.type === "error") console.error("Error:", event.message);
+  }
+});
+```
+
+---
+
+### Stopping mid-run
+
+```typescript
+const agent = new Surfex({ model: anthropic('claude-3-5-sonnet-20241022') });
+
+const runPromise = agent.run({ goal: "...", driver });
+
+agent.stop(); // clean abort, resolves SurfexResult
+
+const result = await runPromise;
+```
+
+---
+
+## 🔌 Bring Your Own Driver
+
+Implement 6 methods. Pass it in. Done.
 
 ```typescript
 import { BrowserDriver } from '@surfex-ai/sdk';
 
 export class MyCustomDriver implements BrowserDriver {
-    async goto(url: string): Promise<void> { /* ... */ }
-    async click(x: number, y: number): Promise<void> { /* ... */ }
-    async type(text: string): Promise<void> { /* ... */ }
-    async getScreenshot(): Promise<string> { /* return base64 png */ }
-    async evaluate<T>(script: string): Promise<T> { /* ... */ }
-    async waitForTimeout(ms: number): Promise<void> { /* ... */ }
+  async goto(url: string): Promise<void>           { /* ... */ }
+  async click(x: number, y: number): Promise<void> { /* ... */ }
+  async type(text: string): Promise<void>           { /* ... */ }
+  async getScreenshot(): Promise<string>            { /* return base64 PNG */ }
+  async evaluate<T>(script: string): Promise<T>    { /* ... */ }
+  async waitForTimeout(ms: number): Promise<void>  { /* ... */ }
 }
 
-// Pass it directly to Surfex!
 agent.run({ driver: new MyCustomDriver(), goal: "..." });
 ```
 
+**Compatible with:** Playwright · Puppeteer · Electron · custom Chromium forks
+
 ---
 
-<div align="center">
-  <p>Built with ❤️ by the Surfex AI Team</p>
-</div>
+## 🧠 How vision mode works
+
+```
+Turn 1          →  Blind (no screenshot) — agent plans first action
+{"action":"see"} →  Vision mode ON
+Turn 2+         →  Screenshot attached every turn
+click_xy        →  Pixel coordinates from the screenshot, not the DOM
+```
+
+Vision-capable models (Claude 3.5 Sonnet, GPT-4o) click what's *visible on screen* — resilient to any markup or layout change.
+
+---
+
+## 📊 How research reports work
+
+```
+agent loop:  navigate → read_page → save_report  (per source, up to 5)
+                                        ↓
+                          secondary LLM call (report writer)
+                                        ↓
+                    structured Markdown · cited · sectioned
+```
+
+The main agent never writes the report. A dedicated report-writer LLM receives all saved page content and synthesizes it, keeping the agentic loop focused purely on browsing.
+
+---
+
+## 📚 Examples
+
+| File | What it shows |
+|------|---------------|
+| [`examples/e2e-testing.ts`](./examples/e2e-testing.ts) | Fast UI testing — reports and conclusions disabled |
+| [`examples/research-agent.ts`](./examples/research-agent.ts) | Full researcher — saves a Markdown report to disk |
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](./LICENSE)
+
+---
+
+<div align="center">Built with ❤️ by the creator of Meikai Browser</div>
