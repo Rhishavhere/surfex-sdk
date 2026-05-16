@@ -1,2 +1,2 @@
-export * from './core/BlueAgent';
+export * from './core/Surfex';
 export * from './drivers/BrowserDriver';
