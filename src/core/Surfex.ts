@@ -2,6 +2,7 @@ import { generateText, LanguageModel } from "ai";
 import { BrowserDriver } from "../drivers/BrowserDriver";
 import { SYSTEM_BLIND, SYSTEM_VISION, buildUserPrompt } from "./promptBuilder";
 import { AgentEvent, AgentStep, parseOrRepairAgentStep } from "./schema";
+import { writeUserConclusion, generateResearchReportMarkdown, ReportSegmentStored } from "./reportWriter";
 
 export interface SurfexOptions {
     model: LanguageModel;
@@ -14,12 +15,22 @@ export interface RunOptions {
     onEvent?: (event: AgentEvent) => void;
 }
 
+export interface SurfexResult {
+    success: boolean;
+    summary: string;
+    conclusion: string;
+    report: string | null;
+}
+
 interface AgentRunState {
     historyLines: string[];
     visionFromNow: boolean;
     executedSteps: number;
     plannerRounds: number;
     lastReadPageUrl: string | null;
+    lastReadCapture: ReportSegmentStored | null;
+    reportSegments: ReportSegmentStored[];
+    isResearchGoal: boolean;
 }
 
 export class Surfex {
@@ -34,7 +45,7 @@ export class Surfex {
         this.abortController = null;
     }
 
-    async run(options: RunOptions): Promise<void> {
+    async run(options: RunOptions): Promise<SurfexResult> {
         const { goal, driver, maxSteps = 60, onEvent = () => {} } = options;
         const { model } = this.options;
 
@@ -49,6 +60,9 @@ export class Surfex {
             executedSteps: 0,
             plannerRounds: 0,
             lastReadPageUrl: null,
+            lastReadCapture: null,
+            reportSegments: [],
+            isResearchGoal: /research|analysiss|summary|report|plan|find out/i.test(goal),
         };
         const maxPlannerRounds = maxSteps * 4 + 12;
 
@@ -56,7 +70,7 @@ export class Surfex {
             while (state.executedSteps < maxSteps && state.plannerRounds < maxPlannerRounds) {
                 if (signal.aborted) {
                     onEvent({ type: "finished", reason: "stopped" });
-                    return;
+                    return this.finalizeRun(goal, "stopped - user aborted", state, signal);
                 }
 
                 state.plannerRounds += 1;
@@ -76,8 +90,6 @@ export class Surfex {
                                 "(() => [window.innerWidth, window.innerHeight])()"
                             );
                             
-                            // Using viewport dimensions as shot dimensions for headless mode
-                            // Actual driver implementations may refine this
                             dims = {
                                 shotW: vp[0],
                                 shotH: vp[1],
@@ -89,7 +101,7 @@ export class Surfex {
                         }
                     } catch (e) {
                         onEvent({ type: "error", message: `screenshot_failed: ${String(e)}` });
-                        return;
+                        return this.finalizeRun(goal, `error: screenshot failed`, state, signal, false);
                     }
                 }
 
@@ -101,6 +113,19 @@ export class Surfex {
                 const url = await driver.evaluate<string>("window.location.href");
                 const title = await driver.evaluate<string>("document.title");
 
+                const researchReminder = state.isResearchGoal
+                    ? "REMINDER: This is a research/analysis goal. You MUST call save_report after read_page on important sources. The reporting agent has no data unless you do."
+                    : "";
+
+                const snapshotSection = state.lastReadCapture
+                    ? [
+                        "---",
+                        "Page snapshot (included once after read_page — use exact text for quotes and summaries):",
+                        state.lastReadCapture.body.slice(0, 15000), // pass a snippet back to agent reasoning
+                        "---",
+                      ].join("\n\n")
+                    : "";
+
                 const visionBase = buildUserPrompt({
                     useImageInRequest,
                     visionFromNow: state.visionFromNow,
@@ -111,10 +136,13 @@ export class Surfex {
                     url,
                     title,
                     dims,
-                    researchReminder: "", // Extracted generic
+                    researchReminder,
                     recent,
-                    snapshotSection: "",
+                    snapshotSection,
                 });
+
+                // Clear the capture snippet after showing it to the agent once
+                // Wait, we can't clear it before checking if they saved it, so we'll clear it after execution.
 
                 const system = useImageInRequest ? SYSTEM_VISION : SYSTEM_BLIND;
                 const userContent = useImageInRequest
@@ -136,7 +164,7 @@ export class Surfex {
                     action = await parseOrRepairAgentStep(text, model, signal, onEvent);
                 } catch (e) {
                     onEvent({ type: "error", message: `llm_error: ${String(e)}` });
-                    return;
+                    return this.finalizeRun(goal, `error: llm failed`, state, signal, false);
                 }
 
                 if (action.action === "see") {
@@ -147,7 +175,7 @@ export class Surfex {
 
                 if (action.action === "done") {
                     onEvent({ type: "finished", reason: action.summary });
-                    return;
+                    return this.finalizeRun(goal, action.summary, state, signal, true);
                 }
 
                 onEvent({ type: "step", step: state.executedSteps + 1, action });
@@ -157,6 +185,7 @@ export class Surfex {
                     switch (action.action) {
                         case "navigate":
                             await driver.goto(action.url);
+                            state.lastReadPageUrl = null;
                             break;
                         case "click_xy":
                             await driver.click(action.x, action.y);
@@ -167,11 +196,27 @@ export class Surfex {
                         case "wait":
                             await driver.waitForTimeout(action.ms);
                             break;
-                        // Add more driver mappings as needed
+                        case "read_page":
+                            const bodyText = await driver.evaluate<string>("document.body.innerText || document.body.textContent || ''");
+                            state.lastReadCapture = {
+                                url,
+                                title,
+                                body: bodyText
+                            };
+                            state.lastReadPageUrl = url;
+                            break;
+                        case "save_report":
+                            if (state.lastReadCapture) {
+                                state.reportSegments.push({ ...state.lastReadCapture });
+                                onEvent({ type: "log", message: `[agent] Saved segment for report: ${state.lastReadCapture.url}` });
+                            } else {
+                                onEvent({ type: "log", message: `[agent] Tried to save_report but read_page was not called recently.` });
+                            }
+                            break;
                     }
                 } catch (execErr) {
                     onEvent({ type: "error", message: `execute_step_failed: ${String(execErr)}` });
-                    return;
+                    return this.finalizeRun(goal, `error: execution failed`, state, signal, false);
                 }
 
                 state.historyLines.push(JSON.stringify(action));
@@ -181,12 +226,52 @@ export class Surfex {
                 await driver.waitForTimeout(350);
             }
 
-            onEvent({ type: "finished", reason: state.executedSteps >= maxSteps ? "max_steps" : "max_planner_rounds" });
+            const reason = state.executedSteps >= maxSteps ? "max_steps" : "max_planner_rounds";
+            onEvent({ type: "finished", reason });
+            return this.finalizeRun(goal, reason, state, signal, false);
             
         } finally {
             if (myRunId === this.currentRunId) {
                 this.abortController = null;
             }
         }
+    }
+
+    private async finalizeRun(
+        goal: string,
+        summary: string,
+        state: AgentRunState,
+        signal: AbortSignal,
+        success = true
+    ): Promise<SurfexResult> {
+        // If there's an error and no history, return basic
+        if (!success && state.historyLines.length === 0) {
+            return { success, summary, conclusion: summary, report: null };
+        }
+
+        // 1. Write the conclusion
+        const conclusion = await writeUserConclusion({
+            goal,
+            historyLines: state.historyLines,
+            agentDoneSummary: summary,
+            model: this.options.model,
+            signal,
+        });
+
+        // 2. Generate the Markdown report
+        const report = await generateResearchReportMarkdown({
+            goal,
+            segments: state.reportSegments,
+            historyLines: state.historyLines,
+            model: this.options.model,
+            signal,
+        });
+
+        return {
+            success,
+            summary,
+            conclusion,
+            report,
+        };
     }
 }
