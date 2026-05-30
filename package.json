@@ -1,6 +1,6 @@
 {
   "name": "@surfex-ai/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agentic browser automation library with vision and self-healing",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
