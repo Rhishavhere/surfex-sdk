@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏄 Surfex AI SDK
+# Surfex AI SDK
 
 **Agentic browser automation — vision-first, self-healing, research-ready.**
 
