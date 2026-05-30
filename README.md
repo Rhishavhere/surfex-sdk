@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🏄 Surfex AI SDK
+# Surfex AI SDK
 
-**Agentic browser automation — vision-first, self-healing, research-ready.**
+**Agentic browser automation - vision-first, self-healing, research-ready.**
 
 [![npm](https://img.shields.io/npm/v/@surfex-ai/sdk?style=flat-square&color=0070f3)](https://www.npmjs.com/package/@surfex-ai/sdk)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-ready-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=flat-square)](https://www.typescriptlang.org/)
 [![Vercel AI SDK](https://img.shields.io/badge/Powered%20by-Vercel%20AI%20SDK-black?style=flat-square&logo=vercel)](https://sdk.vercel.ai/)
 
-Give Surfex a **goal** and a **model**. It navigates, clicks, reads, and reports — all on its own.
+Give Surfex a **goal** and a **model**. It navigates, clicks, reads, and reports - all on its own.
 
 </div>
 
@@ -18,11 +18,11 @@ Give Surfex a **goal** and a **model**. It navigates, clicks, reads, and reports
 
 | | Feature | What it means |
 |---|---|---|
-| 🧠 | **Bring Your Own Model** | Works with Claude, GPT-4o, Gemini — any Vercel AI SDK provider. You own the keys and costs. |
-| 👁️ | **Native Vision** | Auto-screenshots fed to vision models. Clicks target what's *visible*, not fragile CSS selectors. |
-| 🩹 | **Self-Healing** | Built-in JSON repair + retry logic. Malformed LLM output triggers a coercion pass, not a crash. |
-| 📊 | **Auto Reports** | A secondary LLM loop compiles saved page content into a structured, cited Markdown document. |
-| 🔌 | **Driver-Agnostic** | Playwright included. Plug in Puppeteer, Electron, or any custom browser via `BrowserDriver`. |
+|  | **Bring Your Own Model** | Works with Claude, GPT-4o, Gemini — any Vercel AI SDK provider. You own the keys and costs. |
+|  | **Native Vision** | Auto-screenshots fed to vision models. Clicks target what's *visible*, not fragile CSS selectors. |
+|  | **Self-Healing** | Built-in JSON repair + retry logic. Malformed LLM output triggers a coercion pass, not a crash. |
+|  | **Auto Reports** | A secondary LLM loop compiles saved page content into a structured, cited Markdown document. |
+|  | **Driver-Agnostic** | Playwright included. Plug in Puppeteer, Electron, or any custom browser via `BrowserDriver`. |
 
 ---
 
@@ -38,7 +38,7 @@ npm install ai @ai-sdk/anthropic
 
 ---
 
-## 🚀 Quickstart
+##  Quickstart
 
 ```typescript
 import { chromium } from 'playwright';
@@ -64,9 +64,9 @@ await browser.close();
 
 ---
 
-## 🎯 Use Cases
+##  Use Cases
 
-### 🧪 Really cool E2E tests
+###  Really cool E2E tests
 Vision-based clicks survive DOM changes and redesigns. 
 
 ```typescript
@@ -82,7 +82,7 @@ console.log("Passed:", result.success);
 
 ---
 
-### 🕵️ Autonomous planning/research/analysis
+###  Autonomous planning/research/analysis
 Browses multiple sources, extracts content, and produces a Markdown brief — automatically.
 
 ```typescript
@@ -98,7 +98,7 @@ if (result.report) fs.writeFileSync('report.md', result.report, 'utf-8');
 
 ---
 
-### 🗂️ Dynamic data extraction
+###  Dynamic data extraction
 Scrapes React/SPA-heavy pages by scrolling, waiting, and extracting exactly as a human would — no static HTML required.
 
 ---
@@ -166,7 +166,7 @@ const result = await runPromise;
 
 ---
 
-## 🔌 Bring Your Own Driver
+##  Bring Your Own Driver
 
 Implement 6 methods. Pass it in. Done.
 
@@ -189,7 +189,7 @@ agent.run({ driver: new MyCustomDriver(), goal: "..." });
 
 ---
 
-## 🧠 How vision mode works
+##  How vision mode works
 
 ```
 Turn 1          →  Blind (no screenshot) — agent plans first action
@@ -202,7 +202,7 @@ Vision-capable models (Claude 3.5 Sonnet, GPT-4o) click what's *visible on scree
 
 ---
 
-## 📊 How research reports work
+##  How research reports work
 
 ```
 agent loop:  navigate → read_page → save_report  (per source, up to 5)
@@ -216,7 +216,7 @@ The main agent never writes the report. A dedicated report-writer LLM receives a
 
 ---
 
-## 📚 Examples
+##  Examples
 
 | File | What it shows |
 |------|---------------|
